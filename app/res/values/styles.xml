@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.SPCForge" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/sf_window</item>
+        <item name="android:colorBackground">@color/sf_window</item>
+        <item name="android:statusBarColor">@color/sf_panel</item>
+        <item name="android:navigationBarColor">@color/sf_panel</item>
+        <item name="android:colorAccent">@color/sf_accent</item>
+        <item name="android:colorPrimary">@color/sf_panel</item>
+        <item name="android:colorPrimaryDark">@color/sf_panel</item>
+        <item name="android:textColorPrimary">@color/sf_text</item>
+        <item name="android:textColorSecondary">@color/sf_dim</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

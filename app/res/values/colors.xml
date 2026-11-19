@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="sf_window">#17181d</color>
+    <color name="sf_panel">#111216</color>
+    <color name="sf_accent">#4a7fd8</color>
+    <color name="sf_text">#e6e7ec</color>
+    <color name="sf_dim">#8d909b</color>
+    <color name="sf_icon_bg">#0f1218</color>
+</resources>

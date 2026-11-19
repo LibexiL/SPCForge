@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPCForge icon: nested outlook risk areas (marginal to moderate) with a lightning bolt -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path android:fillColor="#66a366" android:pathData="M22,58 C20,40 34,28 52,28 C72,27 88,38 86,56 C85,72 70,82 52,81 C34,81 23,72 22,58 Z" />
+    <path android:fillColor="#ffe066" android:pathData="M31,57 C30,44 40,36 53,36 C67,36 78,44 77,56 C76,67 66,74 53,73 C40,73 32,67 31,57 Z" />
+    <path android:fillColor="#ffa366" android:pathData="M40,56 C40,48 46,43 54,43 C63,43 69,48 68,56 C68,63 62,67 54,67 C46,67 40,63 40,56 Z" />
+    <path android:fillColor="#e06666" android:pathData="M47,55 C47,51 50,49 54,49 C58,49 61,51 61,55 C61,59 58,61 54,61 C50,61 47,59 47,55 Z" />
+    <path android:fillColor="#ffffff" android:strokeColor="#0f1218" android:strokeWidth="2.2" android:strokeLineJoin="round"
+        android:pathData="M58,22 L42,56 L53,56 L46,86 L68,48 L56,48 L64,22 Z" />
+</vector>

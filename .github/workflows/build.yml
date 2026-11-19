@@ -1,0 +1,49 @@
+name: build
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: write        # lets a version tag publish its GitHub release (which the in-app updater reads)
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Cache build tools
+        uses: actions/cache@v4
+        with:
+          path: .tools
+          key: tools-${{ hashFiles('build.sh') }}
+      - name: Tests
+        run: bash build.sh test
+      - name: Build APK
+        run: bash build.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SPCForge-apk
+          path: build/SPCForge-*.apk
+
+      # A tag like v1.6.0 publishes a release with the APK attached, and this version's CHANGELOG
+      # entry as its notes. Installed copies of SPCForge find it and offer the update.
+      - name: Release notes from the changelog
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          ver="${GITHUB_REF_NAME#v}"
+          awk -v v="$ver" '$0 ~ "^## "v"( |$)" {on=1; next} on && /^## / {exit} on {print}' CHANGELOG.md > build/notes.md
+          [ -s build/notes.md ] || echo "SPCForge $ver" > build/notes.md
+          cat build/notes.md
+      - name: Publish the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: SPCForge ${{ github.ref_name }}
+          body_path: build/notes.md
+          files: build/SPCForge-*.apk
