@@ -27,7 +27,10 @@ import com.libexil.spcforge.screens.OutlookScreen
 import com.libexil.spcforge.screens.ReportsScreen
 import com.libexil.spcforge.screens.Screen
 import com.libexil.spcforge.ui.Bg
+import com.libexil.spcforge.ui.Anim
 import com.libexil.spcforge.ui.C
+import com.libexil.spcforge.ui.dp
+import com.libexil.spcforge.ui.rounded
 import com.libexil.spcforge.ui.Icon
 import com.libexil.spcforge.ui.IconView
 import com.libexil.spcforge.ui.ImageCache
@@ -42,6 +45,13 @@ class MainActivity : Activity() {
     private lateinit var titleView: TextView
     private lateinit var backBtn: IconView
     private lateinit var openBtn: IconView
+    private lateinit var refreshBtn: IconView
+    private lateinit var indicator: View
+    private val navViews = ArrayList<View>()
+    /** The view sliding out while a transition runs. */
+    private var outgoing: View? = null
+    private var shown: Screen? = null
+    private var titleTarget = "SPCForge"
     private val navItems = ArrayList<Pair<IconView, TextView>>()
     private val stack = ArrayList<Screen>()
     private var tab = 0
@@ -64,14 +74,19 @@ class MainActivity : Activity() {
         bar.addView(backBtn, LinearLayout.LayoutParams(dpi(44f), dpi(44f)))
         bar.addView(titleView, LinearLayout.LayoutParams(0, -2, 1f))
         bar.addView(openBtn, LinearLayout.LayoutParams(dpi(44f), dpi(44f)))
-        bar.addView(iconButton(Icon.REFRESH) { refresh() }, LinearLayout.LayoutParams(dpi(44f), dpi(44f)))
+        refreshBtn = iconButton(Icon.REFRESH) { refresh() }
+        bar.addView(refreshBtn, LinearLayout.LayoutParams(dpi(44f), dpi(44f)))
         root.addView(bar)
 
         content = FrameLayout(this)
         root.addView(content, LinearLayout.LayoutParams(-1, 0, 1f))
 
-        // bottom navigation
-        val nav = W.row(this).apply { setBackgroundColor(C.panel); setPadding(0, dpi(4f), 0, dpi(4f)) }
+        // bottom navigation: a row of items over a highlight pill that glides to the selected one
+        val navFrame = FrameLayout(this).apply { setBackgroundColor(C.panel) }
+        indicator = View(this).apply { background = rounded(C.accentSoft, dp(16f)); alpha = 0f }
+        navFrame.addView(indicator, FrameLayout.LayoutParams(dpi(58f), dpi(32f)))
+        val nav = W.row(this).apply { setPadding(0, dpi(4f), 0, dpi(4f)) }
+        navFrame.addView(nav, FrameLayout.LayoutParams(-1, -2))
         tabs.forEachIndexed { i, (label, icon) ->
             val item = W.col(this).apply {
                 gravity = Gravity.CENTER; isClickable = true; background = ripple(null)
@@ -82,9 +97,11 @@ class MainActivity : Activity() {
             item.addView(iv, LinearLayout.LayoutParams(dpi(30f), dpi(28f)))
             item.addView(tv)
             navItems.add(iv to tv)
+            navViews.add(item)
             nav.addView(item, LinearLayout.LayoutParams(0, -2, 1f))
         }
-        root.addView(nav)
+        root.addView(navFrame)
+        navFrame.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> placeIndicator(animate = false) }
         setContentView(root)
 
         selectTab(0)
@@ -117,61 +134,159 @@ class MainActivity : Activity() {
 
     fun selectTab(i: Int) {
         if (i == tab && stack.size == 1) { current()?.scrollTop(); return }
-        tab = i
+        val dir = if (i == tab) -1 else Integer.signum(i - tab)
+        setNav(i)
         stack.clear()
-        navItems.forEachIndexed { k, (iv, tv) ->
-            val c = if (k == i) C.text else C.dim
-            iv.setTint(if (k == i) C.accent else C.dim); tv.setTextColor(c)
-        }
         show(when (i) {
             0 -> HomeScreen(this)
             1 -> OutlookScreen(this, 1)
             2 -> ActiveScreen(this, 0)
             3 -> ReportsScreen(this)
             else -> MoreScreen(this)
-        })
+        }, dir, tabSwitch = true)
     }
 
     /** Opens [s] on top of the current screen. */
-    fun push(s: Screen) = show(s)
+    fun push(s: Screen) = show(s, 1, tabSwitch = false)
 
     /** Switches to an outlook / watches tab from elsewhere (e.g. Home's cards). */
     fun goTab(i: Int, screen: Screen) {
-        tab = i
-        navItems.forEachIndexed { k, (iv, tv) -> iv.setTint(if (k == i) C.accent else C.dim); tv.setTextColor(if (k == i) C.text else C.dim) }
+        val dir = if (i == tab) 1 else Integer.signum(i - tab)
+        setNav(i)
         stack.clear()
-        show(screen)
+        show(screen, dir, tabSwitch = true)
     }
 
-    private fun show(s: Screen) {
+    private fun show(s: Screen, dir: Int = 0, tabSwitch: Boolean = false) {
         stack.add(s)
-        attach(s)
+        attach(s, dir, tabSwitch)
     }
 
-    private fun attach(s: Screen) {
-        content.removeAllViews()
-        content.addView(s.view(), FrameLayout.LayoutParams(-1, -1))
+    // ---- bottom bar
+    private fun setNav(i: Int) {
+        val prev = tab
+        tab = i
+        navItems.forEachIndexed { k, (iv, tv) ->
+            val was = k == prev; val now = k == i
+            if (was == now && navViews.isNotEmpty() && indicator.alpha > 0f) return@forEachIndexed
+            if (indicator.alpha == 0f) { iv.setTint(if (now) C.accent else C.dim); tv.setTextColor(if (now) C.text else C.dim); return@forEachIndexed }
+            tint(iv, if (was) C.accent else C.dim, if (now) C.accent else C.dim)
+            Anim.textColor(tv, if (was) C.text else C.dim, if (now) C.text else C.dim)
+            if (now) {
+                iv.scaleX = 0.8f; iv.scaleY = 0.8f
+                iv.animate().scaleX(1f).scaleY(1f).setDuration(320).setInterpolator(android.view.animation.OvershootInterpolator(2.2f)).start()
+            }
+        }
+        placeIndicator(animate = true)
+    }
+
+    private fun tint(iv: IconView, from: Int, to: Int) {
+        android.animation.ValueAnimator.ofObject(android.animation.ArgbEvaluator(), from, to).apply {
+            duration = 200; addUpdateListener { iv.setTint(it.animatedValue as Int) }
+        }.start()
+    }
+
+    /** Moves the highlight pill behind the selected tab's icon. */
+    private fun placeIndicator(animate: Boolean) {
+        val item = navViews.getOrNull(tab) ?: return
+        val iv = navItems[tab].first
+        if (item.width == 0) return
+        val parentRow = item.parent as View
+        val x = parentRow.left + item.left + (item.width - indicator.width) / 2f
+        val y = parentRow.top + item.top + iv.top + (iv.height - indicator.height) / 2f
+        if (!animate || indicator.alpha == 0f) {
+            indicator.animate().cancel()
+            indicator.translationX = x; indicator.translationY = y; indicator.scaleX = 1f
+            if (indicator.alpha < 1f) indicator.animate().alpha(1f).setDuration(200).start()
+        } else {
+            indicator.scaleX = 1.2f
+            indicator.animate().translationX(x).translationY(y).scaleX(1f).alpha(1f)
+                .setDuration(Anim.SCREEN_MS).setInterpolator(Anim.ease).start()
+        }
+    }
+
+    // ---- screen transitions
+    /**
+     * Shows [s]. dir > 0 slides it in from the right (opening something / a tab further right),
+     * dir < 0 from the left (going back); tab switches move less and lean on a cross-fade.
+     */
+    private fun attach(s: Screen, dir: Int, tabSwitch: Boolean) {
+        // finish a transition that's still running
+        outgoing?.let { o -> o.animate().cancel(); content.removeView(o); o.translationX = 0f; o.alpha = 1f }
+        outgoing = null
+        if (shown === s) { updateBar(); return }
+        val old: View? = if (content.childCount > 0) content.getChildAt(content.childCount - 1) else null
+        val v = s.view()
+        shown = s
+        v.animate().cancel()
+        v.translationX = 0f; v.alpha = 1f
+        val lp = FrameLayout.LayoutParams(-1, -1)
+        if (dir < 0) content.addView(v, 0, lp) else content.addView(v, lp)
         updateBar()
+        if (old == null || dir == 0 || content.width == 0) { if (old != null) content.removeView(old); return }
+
+        val w = content.width.toFloat()
+        val shift = if (tabSwitch) w * 0.10f else w * 0.28f
+        if (dir > 0) {
+            v.translationX = shift; v.alpha = 0f
+            v.animate().translationX(0f).alpha(1f).setDuration(Anim.SCREEN_MS).setInterpolator(Anim.ease).start()
+            old.animate().translationX(-shift * 0.4f).alpha(0f).setDuration(Anim.SCREEN_MS * 3 / 4).setInterpolator(Anim.ease)
+                .withEndAction { finishOut(old) }.start()
+        } else {
+            v.translationX = -shift * 0.4f; v.alpha = 0f
+            v.animate().translationX(0f).alpha(1f).setDuration(Anim.SCREEN_MS).setInterpolator(Anim.ease).start()
+            old.animate().translationX(shift).alpha(0f).setDuration(Anim.SCREEN_MS * 3 / 4).setInterpolator(Anim.ease)
+                .withEndAction { finishOut(old) }.start()
+        }
+        outgoing = old
+    }
+
+    private fun finishOut(o: View) {
+        content.removeView(o)
+        o.translationX = 0f; o.alpha = 1f
+        if (outgoing === o) outgoing = null
     }
 
     fun updateBar() {
         val s = current() ?: return
-        titleView.text = s.title
-        backBtn.visibility = if (stack.size > 1) View.VISIBLE else View.GONE
-        titleView.setPadding(if (stack.size > 1) 0 else dpi(12f), 0, 0, 0)
-        openBtn.visibility = if (s.webUrl != null) View.VISIBLE else View.GONE
+        val canBack = stack.size > 1
+        if (titleTarget != s.title) {
+            titleTarget = s.title
+            titleView.animate().cancel()
+            titleView.animate().alpha(0f).translationX(0f).setDuration(90).withEndAction {
+                titleView.text = titleTarget
+                titleView.translationX = dp(8f)
+                titleView.animate().alpha(1f).translationX(0f).setDuration(180).setInterpolator(Anim.ease).start()
+            }.start()
+        }
+        if (canBack != (backBtn.visibility == View.VISIBLE)) {
+            if (canBack) {
+                backBtn.visibility = View.VISIBLE
+                backBtn.alpha = 0f; backBtn.translationX = dp(10f)
+                backBtn.animate().alpha(1f).translationX(0f).setDuration(200).setInterpolator(Anim.ease).start()
+            } else backBtn.visibility = View.GONE
+        }
+        titleView.setPadding(if (canBack) 0 else dpi(12f), 0, 0, 0)
+        val showOpen = s.webUrl != null
+        if (showOpen != (openBtn.visibility == View.VISIBLE)) {
+            openBtn.visibility = if (showOpen) View.VISIBLE else View.GONE
+            if (showOpen) { openBtn.alpha = 0f; openBtn.animate().alpha(1f).setDuration(200).start() }
+        }
     }
 
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
         if (stack.size > 1) {
             stack.removeAt(stack.size - 1)
-            attach(stack.last())
+            attach(stack.last(), -1, tabSwitch = false)
         } else if (tab != 0) selectTab(0)
         else super.onBackPressed()
     }
 
     fun refresh() {
+        refreshBtn.animate().cancel()
+        refreshBtn.rotation = 0f
+        refreshBtn.animate().rotation(360f).setDuration(600).setInterpolator(Anim.easeInOut).start()
         Repo.clear()
         ImageCache.clear()
         current()?.reload(true)

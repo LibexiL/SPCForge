@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.1.0
+
+Smoother motion throughout the app.
+
+- **Tabs and screens slide and cross-fade:** opening a watch, MD or page slides in from the right, Back slides it away,
+  and switching tabs eases toward the side of the tab you picked.
+- **Bottom bar:** a highlight glides to the selected tab, its icon pops in and the colours fade across.
+- **Content eases in** as it arrives from SPC (cards and list rows fade up with a slight stagger), and the page grows
+  smoothly instead of jumping when maps and lists load.
+- **Choice chips** (Day 1/2/3, Tornado/Wind/Hail, Today/Yesterday…) blend the highlight from the old choice to the new one,
+  and scrolling chip rows keep their position.
+- Maps fade in when they finish downloading; cards, rows and buttons press in slightly when tapped.
+- Full-screen maps zoom open and closed, and double-tap zoom is animated.
+- Storm-report totals count up; the refresh button spins; the title and back button fade between screens.
+- Turning off animations in Android's settings (Developer options or Accessibility → Remove animations) turns these off too.
+
 ## 1.0.0
 
 First release.

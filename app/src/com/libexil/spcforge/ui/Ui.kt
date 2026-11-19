@@ -183,7 +183,7 @@ object W {
         val bg = rounded(color, ctx.dp(14f))
         background = if (onClick != null) ripple(bg) else bg
         val p = ctx.dpi(pad); setPadding(p, p, p, p)
-        if (onClick != null) { isClickable = true; setOnClickListener { onClick() } }
+        if (onClick != null) { isClickable = true; setOnClickListener { onClick() }; Anim.pressable(this, 0.98f) }
     }
 
     fun button(ctx: Context, label: String, primary: Boolean = false, onClick: () -> Unit) = TextView(ctx).apply {
@@ -193,6 +193,7 @@ object W {
         background = ripple(rounded(if (primary) C.accent else C.cardAlt, ctx.dp(12f)))
         val v = ctx.dpi(11f); val h = ctx.dpi(16f); setPadding(h, v, h, v)
         isClickable = true; setOnClickListener { onClick() }
+        Anim.pressable(this, 0.96f)
     }
 
     /** A pill-shaped label, e.g. "SLGT" in its risk colour. */
@@ -218,6 +219,7 @@ object W {
         if (onClick != null) {
             r.addView(IconView(ctx, Icon.CHEVRON, C.faint), LinearLayout.LayoutParams(ctx.dpi(20f), ctx.dpi(20f)))
             r.isClickable = true; r.setOnClickListener { onClick() }
+            Anim.pressable(r, 0.98f)
         }
         return r
     }
@@ -228,11 +230,21 @@ object W {
      */
     fun chips(ctx: Context, labels: List<String>, selected: Int, scroll: Boolean = false, onPick: (Int) -> Unit): View {
         val r = row(ctx)
+        // the chip row is rebuilt on every pick: slide the highlight from the old chip to the new one
+        val key = labels.joinToString("|")
+        val prev = lastChip[key]
+        lastChip[key] = selected
         labels.forEachIndexed { i, s ->
             val on = i == selected
+            val bg = rounded(if (on) C.accent else C.cardAlt, ctx.dp(18f))
             val tv = text(ctx, s, 14f, if (on) Color.WHITE else C.text, on).apply {
                 gravity = Gravity.CENTER
-                background = ripple(rounded(if (on) C.accent else C.cardAlt, ctx.dp(18f)))
+                background = ripple(bg)
+                if (prev != null && prev != selected && (i == selected || i == prev)) {
+                    Anim.color(bg, if (on) C.cardAlt else C.accent, if (on) C.accent else C.cardAlt)
+                    Anim.textColor(this, if (on) C.text else Color.WHITE, if (on) Color.WHITE else C.text)
+                    if (on) { scaleX = 0.94f; scaleY = 0.94f; animate().scaleX(1f).scaleY(1f).setDuration(220).setInterpolator(Anim.ease).start() }
+                }
                 val v = ctx.dpi(8f); val h = ctx.dpi(14f); setPadding(h, v, h, v)
                 maxLines = 1; ellipsize = TextUtils.TruncateAt.END
                 isClickable = true; setOnClickListener { if (i != selected) onPick(i) }
@@ -241,9 +253,30 @@ object W {
             if (i > 0) lp.leftMargin = ctx.dpi(6f)
             r.addView(tv, lp)
         }
-        if (!scroll) return r
-        return HorizontalScrollView(ctx).apply { isHorizontalScrollBarEnabled = false; addView(r) }
+        if (!scroll) return r.apply { tag = Anim.NO_FADE }
+        return HorizontalScrollView(ctx).apply {
+            isHorizontalScrollBarEnabled = false; addView(r); tag = Anim.NO_FADE
+            // keep the picked chip in view (and remember where the row was scrolled to)
+            val start = lastScroll[key] ?: 0
+            val hsv = this
+            viewTreeObserver.addOnPreDrawListener(object : android.view.ViewTreeObserver.OnPreDrawListener {
+                override fun onPreDraw(): Boolean {
+                    hsv.viewTreeObserver.removeOnPreDrawListener(this)
+                    hsv.scrollTo(start, 0)
+                    val chip = r.getChildAt(selected)
+                    if (chip != null) {
+                        val left = chip.left - ctx.dpi(16f); val right = chip.right + ctx.dpi(16f)
+                        if (left < hsv.scrollX) hsv.smoothScrollTo(left, 0) else if (right > hsv.scrollX + hsv.width) hsv.smoothScrollTo(right - hsv.width, 0)
+                    }
+                    return true
+                }
+            })
+            setOnScrollChangeListener { _, x, _, _, _ -> lastScroll[key] = x }
+        }
     }
+
+    private val lastChip = HashMap<String, Int>()
+    private val lastScroll = HashMap<String, Int>()
 
     fun spinnerText(ctx: Context, s: String = "Loading…") = text(ctx, s, 14f, C.dim).apply {
         gravity = Gravity.CENTER; setPadding(0, ctx.dpi(28f), 0, ctx.dpi(28f))

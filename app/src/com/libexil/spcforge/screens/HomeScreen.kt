@@ -6,7 +6,9 @@ import com.libexil.spcforge.MainActivity
 import com.libexil.spcforge.core.Repo
 import com.libexil.spcforge.core.Spc
 import com.libexil.spcforge.core.Time
+import com.libexil.spcforge.ui.Anim
 import com.libexil.spcforge.ui.C
+import com.libexil.spcforge.ui.FadeColumn
 import com.libexil.spcforge.ui.Icon
 import com.libexil.spcforge.ui.W
 import com.libexil.spcforge.ui.dp
@@ -97,9 +99,9 @@ class HomeScreen(a: MainActivity) : Screen(a) {
     private fun day1(into: LinearLayout, force: Boolean) {
         val c = W.card(a, 10f, onClick = { a.goTab(1, OutlookScreen(a, 1)) })
         into.addView(c)
-        val head = W.col(a).apply { setPadding(a.dpi(4f), 0, 0, a.dpi(8f)) }
+        val head = FadeColumn(a).apply { setPadding(a.dpi(4f), 0, 0, a.dpi(8f)) }
         c.addView(head)
-        val imgSlot = W.col(a)
+        val imgSlot = FadeColumn(a)
         c.addView(imgSlot)
         loading(imgSlot)
         async({ Data.outlook(1, force) }) { r ->
@@ -165,7 +167,7 @@ class HomeScreen(a: MainActivity) : Screen(a) {
         for (d in 2..3) {
             val c = W.card(a, 8f, onClick = { a.goTab(1, OutlookScreen(a, d)) })
             c.addView(W.text(a, "Day $d", 14f, C.text, true).apply { setPadding(a.dpi(2f), 0, 0, a.dpi(6f)) })
-            val slot = W.col(a); c.addView(slot)
+            val slot = FadeColumn(a); c.addView(slot)
             row.addView(c, LinearLayout.LayoutParams(0, -2, 1f).apply { if (d == 2) rightMargin = a.dpi(8f) })
             async({ Data.outlook(d, force) }) { r -> r.getOrNull()?.let { image(slot, it.images[0]) } ?: slot.addView(W.note(a, "Not available")) }
         }
@@ -192,7 +194,7 @@ class HomeScreen(a: MainActivity) : Screen(a) {
             val row = W.row(a)
             for ((k, label, color) in listOf(Triple('T', "Tornado", 0xffff4d4d.toInt()), Triple('W', "Wind", 0xff5aa2ff.toInt()), Triple('H', "Hail", 0xff4ccd5c.toInt()))) {
                 val col = W.col(a).apply { gravity = Gravity.CENTER_HORIZONTAL }
-                col.addView(W.text(a, reps.count { it.kind == k }.toString(), 26f, color, true))
+                col.addView(W.text(a, "0", 26f, color, true).also { Anim.countUp(it, reps.count { r -> r.kind == k }) })
                 col.addView(W.text(a, label, 13f, C.dim))
                 row.addView(col, LinearLayout.LayoutParams(0, -2, 1f))
             }

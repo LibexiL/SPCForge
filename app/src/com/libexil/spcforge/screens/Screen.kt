@@ -11,7 +11,9 @@ import com.libexil.spcforge.core.Product
 import com.libexil.spcforge.core.TextFmt
 import com.libexil.spcforge.ui.AsyncImage
 import com.libexil.spcforge.ui.Bg
+import com.libexil.spcforge.ui.Anim
 import com.libexil.spcforge.ui.C
+import com.libexil.spcforge.ui.FadeColumn
 import com.libexil.spcforge.ui.W
 import com.libexil.spcforge.ui.dpi
 
@@ -22,7 +24,7 @@ abstract class Screen(val a: MainActivity) {
     var loadedAt = 0L
         protected set
 
-    protected val body: LinearLayout = W.col(a)
+    protected val body: LinearLayout = FadeColumn(a)
     private var root: ScrollView? = null
     private var gen = 0
 
@@ -31,6 +33,15 @@ abstract class Screen(val a: MainActivity) {
             isFillViewport = true
             val p = a.dpi(12f)
             body.setPadding(p, a.dpi(8f), p, a.dpi(24f))
+            body.layoutTransition = android.animation.LayoutTransition().apply {
+                disableTransitionType(android.animation.LayoutTransition.APPEARING)
+                disableTransitionType(android.animation.LayoutTransition.DISAPPEARING)
+                disableTransitionType(android.animation.LayoutTransition.CHANGE_APPEARING)
+                disableTransitionType(android.animation.LayoutTransition.CHANGE_DISAPPEARING)
+                enableTransitionType(android.animation.LayoutTransition.CHANGING)
+                setDuration(android.animation.LayoutTransition.CHANGING, Anim.FADE_MS)
+                setInterpolator(android.animation.LayoutTransition.CHANGING, Anim.ease)
+            }
             addView(body, ViewGroup.LayoutParams(-1, -2))
             root = this
             reload(false)
@@ -59,7 +70,7 @@ abstract class Screen(val a: MainActivity) {
 
     /** A container added to [body] now and filled later. */
     protected fun slot(into: LinearLayout = body, top: Float = 0f): LinearLayout =
-        W.col(a).also { into.addView(it, W.lp(top = a.dpi(top))) }
+        FadeColumn(a).also { it.tag = Anim.NO_FADE; into.addView(it, W.lp(top = a.dpi(top))) }
 
     protected fun loading(into: LinearLayout, s: String = "Loading…") { into.removeAllViews(); into.addView(W.spinnerText(a, s)) }
 

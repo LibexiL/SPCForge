@@ -94,11 +94,12 @@ class AsyncImage(ctx: Context, private val img: Img, private val hideIfMissing: 
         box.addView(status, FrameLayout.LayoutParams(-1, -1))
         addView(box, LayoutParams(-1, -2))
         box.setOnClickListener { val b = ImageCache.cached(img); if (b != null) Viewer.show(ctx, img.label, b, url) }
+        Anim.pressable(box, 0.985f)
         val have = ImageCache.cached(img)
-        if (have != null) show(have) else {
+        if (have != null) show(have, animate = false) else {
             status.text = "Loading image…"
             Bg.run({ ImageCache.load(img) }) { r ->
-                r.onSuccess { (b, u) -> url = u; show(b) }
+                r.onSuccess { (b, u) -> url = u; show(b, animate = true) }
                 r.onFailure {
                     if (hideIfMissing) visibility = GONE
                     else status.text = "Image not available right now"
@@ -107,9 +108,13 @@ class AsyncImage(ctx: Context, private val img: Img, private val hideIfMissing: 
         }
     }
 
-    private fun show(b: Bitmap) {
+    private fun show(b: Bitmap, animate: Boolean) {
         if (hideIfMissing && (b.width < 160 || b.height < 100)) { visibility = GONE; return }
-        status.visibility = GONE
+        if (animate) {
+            status.animate().alpha(0f).setDuration(120).withEndAction { status.visibility = GONE }.start()
+            iv.alpha = 0f; iv.scaleX = 1.03f; iv.scaleY = 1.03f
+            iv.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(320).setInterpolator(Anim.ease).start()
+        } else status.visibility = GONE
         iv.setImageBitmap(b)
         if (url == null) url = img.urls.first()
     }
@@ -135,10 +140,28 @@ class ZoomImageView(ctx: Context, private val bmp: Bitmap) : View(ctx) {
             m.postTranslate(-dx, -dy); clamp(); invalidate(); return true
         }
         override fun onDoubleTap(e: MotionEvent): Boolean {
-            if (scale > 1.05f) fit() else { scale = 2.5f; m.postScale(2.5f, 2.5f, e.x, e.y); clamp() }
-            invalidate(); return true
+            animateTo(if (scale > 1.05f) 1f else 2.5f, e.x, e.y); return true
         }
     })
+
+    private var zoomAnim: android.animation.ValueAnimator? = null
+
+    /** Smoothly zooms to [target] (1 = fit) around a point. */
+    private fun animateTo(target: Float, fx: Float, fy: Float) {
+        zoomAnim?.cancel()
+        val from = scale
+        zoomAnim = android.animation.ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 260; interpolator = Anim.ease
+            addUpdateListener {
+                val want = from + (target - from) * (it.animatedValue as Float)
+                val f = want / scale
+                scale = want
+                m.postScale(f, f, fx, fy)
+                clamp(); invalidate()
+            }
+            start()
+        }
+    }
 
     private fun fit() {
         if (width == 0) return
@@ -161,6 +184,7 @@ class ZoomImageView(ctx: Context, private val bmp: Bitmap) : View(ctx) {
     override fun onSizeChanged(w: Int, h: Int, ow: Int, oh: Int) { fit() }
     override fun onDraw(c: Canvas) { c.drawBitmap(bmp, m, null) }
     override fun onTouchEvent(e: MotionEvent): Boolean {
+        if (e.actionMasked == MotionEvent.ACTION_DOWN) zoomAnim?.cancel()
         scaler.onTouchEvent(e)
         if (!scaler.isInProgress) gestures.onTouchEvent(e)
         return true
@@ -174,7 +198,16 @@ object Viewer {
         d.requestWindowFeature(Window.FEATURE_NO_TITLE)
         val root = W.col(ctx).apply { setBackgroundColor(Color.BLACK) }
         val bar = W.row(ctx).apply { setPadding(ctx.dpi(4f), ctx.dpi(4f), ctx.dpi(4f), ctx.dpi(4f)) }
-        bar.addView(IconView(ctx, Icon.CLOSE).apply { isClickable = true; background = ripple(null); setOnClickListener { d.dismiss() } },
+        val zoom = ZoomImageView(ctx, bmp)
+        var closing = false
+        fun close() {
+            if (closing) return
+            closing = true
+            zoom.animate().scaleX(0.94f).scaleY(0.94f).setDuration(160).setInterpolator(Anim.easeInOut).start()
+            root.animate().alpha(0f).setDuration(160).withEndAction { try { d.dismiss() } catch (_: Exception) {} }.start()
+        }
+        d.setOnKeyListener { _, code, ev -> if (code == android.view.KeyEvent.KEYCODE_BACK && ev.action == android.view.KeyEvent.ACTION_UP) { close(); true } else code == android.view.KeyEvent.KEYCODE_BACK }
+        bar.addView(IconView(ctx, Icon.CLOSE).apply { isClickable = true; background = ripple(null); setOnClickListener { close() } },
             LinearLayout.LayoutParams(ctx.dpi(48f), ctx.dpi(48f)))
         bar.addView(W.text(ctx, title, 16f, C.text, true).apply { maxLines = 1 }, LinearLayout.LayoutParams(0, -2, 1f))
         if (url != null) bar.addView(IconView(ctx, Icon.OPEN).apply {
@@ -182,9 +215,14 @@ object Viewer {
             setOnClickListener { try { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } catch (_: Exception) {} }
         }, LinearLayout.LayoutParams(ctx.dpi(48f), ctx.dpi(48f)))
         root.addView(bar)
-        root.addView(ZoomImageView(ctx, bmp), LinearLayout.LayoutParams(-1, 0, 1f))
+        root.addView(zoom, LinearLayout.LayoutParams(-1, 0, 1f))
         root.addView(W.note(ctx, "Pinch or double-tap to zoom").apply { gravity = Gravity.CENTER; setPadding(0, ctx.dpi(6f), 0, ctx.dpi(10f)) })
         d.setContentView(root, ViewGroup.LayoutParams(-1, -1))
+        d.window?.setWindowAnimations(0)
+        d.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Color.TRANSPARENT))
+        root.alpha = 0f; zoom.scaleX = 0.9f; zoom.scaleY = 0.9f
         d.show()
+        root.animate().alpha(1f).setDuration(200).setInterpolator(Anim.ease).start()
+        zoom.animate().scaleX(1f).scaleY(1f).setDuration(280).setInterpolator(Anim.ease).start()
     }
 }
