@@ -57,9 +57,9 @@ bash build.sh          # builds build/SPCForge-<version>.apk
 bash build.sh test     # runs the SPC parser tests on the JVM
 ```
 
-Every push is built by GitHub Actions; pushing a tag like `v1.0.1` publishes a release with the APK attached
-(the app's updater reads it). Bump `android:versionCode` / `android:versionName` in `app/AndroidManifest.xml` and add a
-`CHANGELOG.md` entry first.
+Every push is built by GitHub Actions. To ship a new version, bump `android:versionCode` and `android:versionName`
+in `app/AndroidManifest.xml`, add a `## <version>` entry to `CHANGELOG.md`, and push to `main`: the workflow sees a
+version with no release yet and publishes `v<version>` with the APK attached (the app's updater reads it).
 
 ### Project layout
 
