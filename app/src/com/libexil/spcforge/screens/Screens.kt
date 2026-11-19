@@ -193,13 +193,14 @@ class MoreScreen(a: MainActivity) : Screen(a) {
         item("Fire weather outlooks", "Days 1, 2 and 3–8", Icon.FIRE) { a.push(PagesScreen(a, "Fire Weather", Spc.FIRE_PAGES)) }
         item("Thunderstorm outlooks", "General thunder for the next few hours", Icon.BOLT) { a.push(PagesScreen(a, "Thunderstorm Outlooks", Spc.TSTM_PAGES)) }
         item("Days 4–8 outlook", "Extended severe-weather outlook", Icon.MAP) { a.goTab(1, OutlookScreen(a, 4)) }
+        item("Tropics (National Hurricane Center)", "Active storms, cones, advisories, outlooks", Icon.HURRICANE) { a.goTab(4, TropicsScreen(a)) }
         body.addView(W.section(a, "Analysis"))
         item("Mesoanalysis", "CAPE, shear, SRH, STP and more, hourly", Icon.CHART) { a.push(MesoScreen(a)) }
         item("Storm reports", "Today and yesterday", Icon.LIST) { a.goTab(3, ReportsScreen(a)) }
         body.addView(W.section(a, "App"))
         item("Settings", "Location, text, updates", Icon.SETTINGS) { a.push(SettingsScreen(a)) }
         item("Open the SPC website", "spc.noaa.gov", Icon.OPEN) { a.openUrl(Spc.BASE) }
-        body.addView(W.note(a, "SPCForge ${(a.application as App).versionName()} · data from the NOAA Storm Prediction Center, " +
+        body.addView(W.note(a, "SPCForge ${(a.application as App).versionName()} · data from the NOAA Storm Prediction Center and National Hurricane Center, " +
             "the National Weather Service and the Iowa Environmental Mesonet. Not an official NOAA app.").apply { setPadding(a.dpi(4f), a.dpi(16f), a.dpi(4f), 0) })
     }
 }

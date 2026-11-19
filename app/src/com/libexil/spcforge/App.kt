@@ -78,6 +78,10 @@ class Prefs(ctx: Context) {
         get() = p.getString("mesoParam", "pmsl") ?: "pmsl"
         set(v) = p.edit().putString("mesoParam", v).apply()
 
+    var nhcBasin: String
+        get() = p.getString("nhcBasin", "atl") ?: "atl"
+        set(v) = p.edit().putString("nhcBasin", v).apply()
+
     var autoUpdateCheck: Boolean
         get() = p.getBoolean("autoUpdate", true)
         set(v) = p.edit().putBoolean("autoUpdate", v).apply()

@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.2.0
+
+National Hurricane Center added.
+
+- **New Tropics tab:** every active storm NHC and CPHC are advising on (Atlantic, eastern and central Pacific), with its
+  category, winds, pressure, movement and how far it is from you.
+- **Storm pages:** the forecast cone, key messages, current wind field, wind-arrival times, wind-speed probabilities,
+  peak storm surge and rainfall graphics (whichever NHC issues for that storm), the advisory summary, and the public advisory,
+  forecast discussion, forecast advisory and wind-probability text.
+- **Tropical weather outlooks** for each basin: the 7-day and 2-day graphics, the outlook text and the Tropical Weather Discussion.
+- **Home** lists active storms and puts a banner at the top when one is within 600 miles of you.
+- Choice chips in the middle of a page no longer scroll you back to the top.
+
 ## 1.1.0
 
 Smoother motion throughout the app.

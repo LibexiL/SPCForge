@@ -26,6 +26,7 @@ import com.libexil.spcforge.screens.MoreScreen
 import com.libexil.spcforge.screens.OutlookScreen
 import com.libexil.spcforge.screens.ReportsScreen
 import com.libexil.spcforge.screens.Screen
+import com.libexil.spcforge.screens.TropicsScreen
 import com.libexil.spcforge.ui.Bg
 import com.libexil.spcforge.ui.Anim
 import com.libexil.spcforge.ui.C
@@ -57,7 +58,7 @@ class MainActivity : Activity() {
     private var tab = 0
     private var locationCallback: ((Boolean) -> Unit)? = null
 
-    private val tabs = listOf("Home" to Icon.HOME, "Outlooks" to Icon.MAP, "Watches" to Icon.WARNING, "Reports" to Icon.LIST, "More" to Icon.MORE)
+    private val tabs = listOf("Home" to Icon.HOME, "Outlooks" to Icon.MAP, "Watches" to Icon.WARNING, "Reports" to Icon.LIST, "Tropics" to Icon.HURRICANE, "More" to Icon.MORE)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -84,7 +85,7 @@ class MainActivity : Activity() {
         // bottom navigation: a row of items over a highlight pill that glides to the selected one
         val navFrame = FrameLayout(this).apply { setBackgroundColor(C.panel) }
         indicator = View(this).apply { background = rounded(C.accentSoft, dp(16f)); alpha = 0f }
-        navFrame.addView(indicator, FrameLayout.LayoutParams(dpi(58f), dpi(32f)))
+        navFrame.addView(indicator, FrameLayout.LayoutParams(dpi(52f), dpi(32f)))
         val nav = W.row(this).apply { setPadding(0, dpi(4f), 0, dpi(4f)) }
         navFrame.addView(nav, FrameLayout.LayoutParams(-1, -2))
         tabs.forEachIndexed { i, (label, icon) ->
@@ -93,7 +94,7 @@ class MainActivity : Activity() {
                 setOnClickListener { selectTab(i) }
             }
             val iv = IconView(this, icon, C.dim)
-            val tv = W.text(this, label, 11.5f, C.dim).apply { gravity = Gravity.CENTER }
+            val tv = W.text(this, label, 11f, C.dim).apply { gravity = Gravity.CENTER; maxLines = 1 }
             item.addView(iv, LinearLayout.LayoutParams(dpi(30f), dpi(28f)))
             item.addView(tv)
             navItems.add(iv to tv)
@@ -142,6 +143,7 @@ class MainActivity : Activity() {
             1 -> OutlookScreen(this, 1)
             2 -> ActiveScreen(this, 0)
             3 -> ReportsScreen(this)
+            4 -> TropicsScreen(this)
             else -> MoreScreen(this)
         }, dir, tabSwitch = true)
     }

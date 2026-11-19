@@ -55,6 +55,13 @@ abstract class Screen(val a: MainActivity) {
     fun reload(force: Boolean) {
         gen++
         loadedAt = System.currentTimeMillis()
+        // hold the page's height while it refills so the scroll position doesn't jump to the top
+        val keep = body.height
+        if (keep > 0) {
+            body.minimumHeight = keep
+            val g = gen
+            body.postDelayed({ if (g == gen) body.minimumHeight = 0 }, 1500)
+        }
         body.removeAllViews()
         render(force)
     }

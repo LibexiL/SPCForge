@@ -44,6 +44,8 @@ class HomeScreen(a: MainActivity) : Screen(a) {
         val d1 = slot()
         body.addView(W.section(a, "Active now"))
         val active = slot()
+        body.addView(W.section(a, "Tropics"))
+        val tropics = slot()
         body.addView(W.section(a, "Today's storm reports"))
         val reports = slot()
         body.addView(W.section(a, "Coming days"))
@@ -52,6 +54,7 @@ class HomeScreen(a: MainActivity) : Screen(a) {
         localRisk(local, force)
         day1(d1, force)
         activeNow(active, alerts, force)
+        tropicsNow(tropics, alerts, force)
         reportCounts(reports, force)
         comingDays(ahead, force)
     }
@@ -143,6 +146,31 @@ class HomeScreen(a: MainActivity) : Screen(a) {
             for (w in watches.take(6)) into.addView(watchRow(a, w), W.lp(bottom = a.dpi(6f)))
             for (m in mds.take(6)) into.addView(mdRow(a, m), W.lp(bottom = a.dpi(6f)))
             if (watches.size > 6 || mds.size > 6) into.addView(W.button(a, "See all") { a.goTab(2, ActiveScreen(a, 0)) })
+        }
+    }
+
+    // ---- tropics (NHC)
+    private fun tropicsNow(into: LinearLayout, alerts: LinearLayout, force: Boolean) {
+        loading(into)
+        async({ TropicsData.storms(force) }) { r ->
+            into.removeAllViews()
+            val storms = r.getOrNull()
+            if (storms == null) {
+                into.addView(W.listRow(a, "National Hurricane Center", "Couldn't load active storms – tap for outlooks", icon = Icon.HURRICANE) { a.goTab(4, TropicsScreen(a)) })
+                return@async
+            }
+            if (storms.isEmpty()) {
+                into.addView(W.listRow(a, "No active tropical cyclones", "Tap for NHC's tropical weather outlooks", icon = Icon.HURRICANE) { a.goTab(4, TropicsScreen(a)) })
+                return@async
+            }
+            for (s in storms) into.addView(TropicsData.stormRow(a, s), W.lp(bottom = a.dpi(6f)))
+            // a storm close to you gets a banner at the top
+            if (a.prefs.hasLocation) for (s in storms) {
+                if (s.lat.isNaN()) continue
+                val miles = com.libexil.spcforge.core.Nhc.milesBetween(a.prefs.lat, a.prefs.lon, s.lat, s.lon)
+                if (miles <= 600) alerts.addView(W.listRow(a, "${s.title} is ${com.libexil.spcforge.core.Nhc.fromYou(s, a.prefs.lat, a.prefs.lon)}",
+                    s.stats().ifEmpty { null }, bar = s.color, icon = Icon.HURRICANE) { a.push(StormScreen(a, s)) }, W.lp(bottom = a.dpi(8f)))
+            }
         }
     }
 

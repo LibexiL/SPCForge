@@ -73,7 +73,7 @@ object Bg {
 }
 
 // ------------------------------------------------------------------------- icons
-enum class Icon { HOME, MAP, WARNING, LIST, MORE, BACK, REFRESH, OPEN, LOCATE, CLOSE, CHEVRON, SETTINGS, FIRE, BOLT, CHART, INFO, DOWNLOAD }
+enum class Icon { HOME, MAP, WARNING, LIST, MORE, BACK, REFRESH, OPEN, LOCATE, CLOSE, CHEVRON, SETTINGS, FIRE, BOLT, CHART, INFO, DOWNLOAD, HURRICANE }
 
 class IconView(ctx: Context, var icon: Icon, private var tint: Int = C.text) : View(ctx) {
     private val p = Paint(Paint.ANTI_ALIAS_FLAG).apply { strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND }
@@ -148,6 +148,11 @@ class IconView(ctx: Context, var icon: Icon, private var tint: Int = C.text) : V
             Icon.INFO -> {
                 c.drawCircle(12f, 12f, 9.5f, p); c.drawLine(12f, 10.5f, 12f, 17f, p)
                 p.style = Paint.Style.FILL; c.drawCircle(12f, 7.3f, 1.3f, p)
+            }
+            Icon.HURRICANE -> {
+                c.drawCircle(12f, 12f, 3.6f, p)
+                path.moveTo(15.4f, 10.6f); path.cubicTo(16.4f, 5f, 10f, 2.2f, 5.5f, 3.6f); c.drawPath(path, p)
+                path.reset(); path.moveTo(8.6f, 13.4f); path.cubicTo(7.6f, 19f, 14f, 21.8f, 18.5f, 20.4f); c.drawPath(path, p)
             }
             Icon.DOWNLOAD -> {
                 c.drawLine(12f, 3f, 12f, 15f, p); path.moveTo(6.5f, 9.5f); path.lineTo(12f, 15f); path.lineTo(17.5f, 9.5f); c.drawPath(path, p)

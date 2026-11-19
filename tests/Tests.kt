@@ -2,6 +2,7 @@ package com.libexil.spcforge.tests
 
 import com.libexil.spcforge.core.Geo
 import com.libexil.spcforge.core.Html
+import com.libexil.spcforge.core.Nhc
 import com.libexil.spcforge.core.Releases
 import com.libexil.spcforge.core.Spc
 import com.libexil.spcforge.core.TextFmt
@@ -94,6 +95,35 @@ private val OUTLOOK_GEO = """
 ]}
 """.trimIndent()
 
+
+private val STORMS = """
+{"activeStorms":[
+{"id":"ep212026","binNumber":"EP1","name":"Raymond","classification":"TS","intensity":"45","pressure":"1000",
+ "latitude":"15.2N","longitude":"105.1W","latitudeNumeric":15.2,"longitudeNumeric":-105.1,"movementDir":300,"movementSpeed":9,
+ "lastUpdate":"2026-11-19T21:00:00.000Z",
+ "publicAdvisory":{"advNum":"005","issuance":"2026-11-19T21:00:00.000Z","url":"https://www.nhc.noaa.gov/text/refresh/MIATCPEP1+shtml/192034.shtml"},
+ "forecastGraphics":{"advNum":"005","url":"https://www.nhc.noaa.gov/graphics_ep1.shtml"}},
+{"id":"al182026","binNumber":"AT3","name":"Sara","classification":"HU","intensity":"115","pressure":"945",
+ "latitude":"18.0N","longitude":"80.5W","movementDir":"5",
+ "lastUpdate":"2026-11-19T21:00:00.000Z",
+ "publicAdvisory":{"advNum":"012A","url":"http://www.nhc.noaa.gov/text/refresh/MIATCPAT3+shtml/1.shtml"}},
+{"id":"al192026","binNumber":"AT4","name":"Nineteen","classification":"TD","intensity":"30","pressure":"1007","latitudeNumeric":12.0,"longitudeNumeric":-45.0}
+]}
+""".trimIndent()
+
+private val TCP = """
+   BULLETIN
+   Hurricane Sara Advisory Number  12A
+
+   SUMMARY OF 700 PM EST...0000 UTC...INFORMATION
+   ----------------------------------------------
+   LOCATION...18.0N 80.5W
+   ABOUT 150 MI...240 KM SSW OF GRAND CAYMAN
+   MAXIMUM SUSTAINED WINDS...130 MPH...215 KM/H
+   PRESENT MOVEMENT...N OR 5 DEGREES AT 6 MPH...9 KM/H
+   MINIMUM CENTRAL PRESSURE...945 MB...27.91 INCHES
+""".trimIndent()
+
 fun main() {
     // ---- outlook page scraping
     check("issuance time", Spc.issuanceTime(OUTLOOK_HTML, 1) == "2000") { Spc.issuanceTime(OUTLOOK_HTML, 1).toString() }
@@ -160,6 +190,27 @@ fun main() {
     check("version compare", Releases.isNewer("1.0.1", "1.0.0") && !Releases.isNewer("1.0.0", "1.0.0"))
     val watchIdx = "<a href=\"ww0612.html\">Tornado Watch 612</a> <a href=\"ww0613.html\">Severe Thunderstorm Watch #613</a>"
     check("watch index numbers", Html.matches(watchIdx, Regex("""ww(\d{4})\.html""")) == listOf("0612", "0613"))
+
+
+    // ---- NHC
+    val storms = Nhc.parseStorms(STORMS)
+    check("storms parsed + Atlantic first", storms.map { it.id } == listOf("al182026", "al192026", "ep212026")) { storms.map { it.id }.toString() }
+    val sara = storms[0]
+    check("hurricane category", sara.category == 4 && sara.kind == "Major Hurricane" && sara.title == "Major Hurricane Sara" && sara.badge == "CAT 4") {
+        "${sara.category} ${sara.kind} ${sara.title} ${sara.badge}" }
+    check("mph from kt", sara.windMph == 130 && Nhc.mph(45) == 50 && Nhc.mph(30) == 35) { "${sara.windMph}" }
+    check("lat/lon from text", sara.lat == 18.0 && sara.lon == -80.5) { "${sara.lat} ${sara.lon}" }
+    check("https forced", sara.publicUrl == "https://www.nhc.noaa.gov/text/refresh/MIATCPAT3+shtml/1.shtml")
+    check("string movement dir", sara.movementDir == 5 && sara.stats() == "130 mph · 945 mb · moving N") { sara.stats() }
+    check("graphics dir", sara.graphicsDir == "https://www.nhc.noaa.gov/storm_graphics/AT03" && storms[2].graphicsDir.endsWith("/EP01"))
+    check("cone url", Nhc.stormImages(sara)[0].urls[0] == "https://www.nhc.noaa.gov/storm_graphics/AT03/AL182026_5day_cone_with_line_and_wind.png")
+    check("td title", storms[1].title == "Tropical Depression Nineteen" && storms[1].badge == "TD") { storms[1].title }
+    check("ts", storms[2].title == "Tropical Storm Raymond" && storms[2].basin == "Eastern Pacific" && storms[2].advisoryNum == "005")
+    val sum = Nhc.summary(TCP)
+    check("advisory summary", sum.size == 5 && sum[2] == ("Max winds" to "130 MPH · 215 KM/H") && sum[1].second.startsWith("150 MI")) { sum.toString() }
+    check("distance", Nhc.fromYou(sara, 25.76, -80.19) == "540 mi S of you") { Nhc.fromYou(sara, 25.76, -80.19).toString() }
+    check("compass", Nhc.compass(359.0) == "N" && Nhc.compass(135.0) == "SE" && Nhc.compass(250.0) == "WSW")
+    check("outlook image", Nhc.outlookImage(Nhc.BASINS[1], 7).urls[0] == "https://www.nhc.noaa.gov/xgtwo/two_pac_7d0.png")
 
     println(if (failures == 0) "ALL OK" else "$failures FAILED")
     if (failures > 0) exitProcess(1)
